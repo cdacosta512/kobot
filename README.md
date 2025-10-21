@@ -1,4 +1,4 @@
-![alt text](kobot_nb_black.png)
+![alt text](assests/kobot_nb_black.png)
 # Kobot - Kubernetes Cluster Health Analyzer
 Kobot is a Go-native, read-only CLI that analyzes Kubernetes cluster health and gives operators and release engineers a concise, high-level overview of the cluster and its resources.
 

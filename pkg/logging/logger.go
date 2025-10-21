@@ -1,29 +1,40 @@
 package logging
 
 import (
-	"log/slog"
-	"os"
+	"fmt"
+
+	"github.com/fatih/color"
 )
 
-func Init(mode string, level slog.Level) {
-	var handler slog.Handler
+// basic styles
+var (
+	infoColor    = color.New(color.FgCyan)
+	successColor = color.New(color.FgGreen)
+	warnColor    = color.New(color.FgYellow)
+	errorColor   = color.New(color.FgRed)
+	bold         = color.New(color.Bold)
+)
 
-	switch mode {
-	case "text":
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
-	default:
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
-	}
-
-	slog.SetDefault(slog.New(handler))
-	slog.Info("logger initialized", "mode", mode, "level", level.String())
+func Info(msg string, args ...interface{}) {
+	infoColor.Printf("INFO  ")
+	fmt.Printf(msg+"\n", args...)
 }
 
-// New creates a contextual logger for specific components
-func New(component string) *slog.Logger {
-	return slog.Default().With("component", component)
+func Success(msg string, args ...interface{}) {
+	successColor.Printf("OK    ")
+	fmt.Printf(msg+"\n", args...)
 }
 
-// Initialize global logger (JSON mode)
-// usage
-// logging.Init("json", slog.LevelInfo)
+func Warn(msg string, args ...interface{}) {
+	warnColor.Printf("WARN  ")
+	fmt.Printf(msg+"\n", args...)
+}
+
+func Error(msg string, args ...interface{}) {
+	errorColor.Printf("ERROR ")
+	fmt.Printf(msg+"\n", args...)
+}
+
+func Title(msg string, args ...interface{}) {
+	bold.Printf("\n%s\n", fmt.Sprintf(msg, args...))
+}

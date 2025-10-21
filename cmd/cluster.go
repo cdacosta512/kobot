@@ -4,35 +4,23 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"log/slog"
+	"gitlab.com/kobot/kobot/pkg/common"
 	"github.com/spf13/cobra"
-	"gitlab.com/kobot/kobot/pkg/cluster"
-	"gitlab.com/kobot/kobot/pkg/logging"
+	"gitlab.com/kobot/kobot/pkg/checks"
 )
 
 // clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Check overall cluster health across all namespaces",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		
-		// empty string defaults to json now
-		logging.Init("", slog.LevelInfo)
-
-		// connect to the cluster
-		clientset, err := cluster.GetClientset()
-		if err != nil {
-			slog.Error("failed to connect to cluster", "error", err)
-		}
-		
-		// get version of the kubernetes client (e.g v1.34)
-		version, err := clientset.Discovery().ServerVersion()
-		if err != nil {
-			slog.Warn("connected to cluster but failed to obtain the version", "error", err)
+	Run: func(cmd *cobra.Command, args []string) {
+		clientset := common.EnsureClusterConnection()
+		if clientset == nil {
+			return
 		}
 
-		slog.Info("successfully connected to cluster", "version", version.String())
-		return nil
+		checks.RunPodCheck(clientset)
+
 	},
 }
 

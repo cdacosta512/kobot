@@ -5,8 +5,6 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -15,9 +13,6 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check the health of the entire cluster or a specific resource in the cluster.",
 	Long: `Check the health of the entire cluster or a specific resource in the cluster (helmReleases, deployments, custom CRDs, etc).`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("check called")
-	},
 }
 
 func init() {

@@ -9,6 +9,9 @@ import (
 	"gitlab.com/kobot/kobot/pkg/checks"
 )
 
+// namespace to be used in the health check
+var namespace string
+
 // clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
@@ -19,13 +22,14 @@ var clusterCmd = &cobra.Command{
 			return
 		}
 
-		checks.RunPodCheck(clientset)
+		checks.RunPodCheck(clientset, namespace)
 
 	},
 }
 
 func init() {
 	checkCmd.AddCommand(clusterCmd)
+	clusterCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace to check (default: all)")
 
 	// Here you will define your flags and configuration settings.
 

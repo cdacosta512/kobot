@@ -9,7 +9,7 @@ import (
 func EnsureClusterConnection() *kubernetes.Clientset {
 	clientset, err := cluster.GetClientset()
 	if err != nil {
-		logging.Error("Failed to connect to cluster: %v", err)
+		logging.Error("Failed to connect to cluster. If kubectl can't connect, Kobot can't connect either.")
 		return nil
 	}
 	// commenting this out because we dont want to tell the user that it connected; rather just tell them when it didnt connect right?

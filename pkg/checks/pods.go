@@ -39,7 +39,7 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string) {
 
 	time.Sleep(5 * time.Second) // grace period for pods still starting
 	s.Stop()
-	fmt.Println("\n Starting operator-initiated health check\n")
+	fmt.Println("\n Starting operator-initiated health check:\n")
 
 	var totalNamespaces int
 	var totalPods int

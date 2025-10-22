@@ -12,6 +12,10 @@ import (
 // namespace to be used in the health check
 var namespace string
 
+// html report bool for the final results to be stored in a html file
+var htmlOutput bool
+
+
 // clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
@@ -22,7 +26,7 @@ var clusterCmd = &cobra.Command{
 			return
 		}
 
-		checks.RunPodCheck(clientset, namespace)
+		checks.RunPodCheck(clientset, namespace, htmlOutput)
 
 	},
 }
@@ -30,6 +34,7 @@ var clusterCmd = &cobra.Command{
 func init() {
 	checkCmd.AddCommand(clusterCmd)
 	clusterCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace to check (default: all)")
+	clusterCmd.Flags().BoolVar(&htmlOutput, "html", false, "Generate an HTML report (kobot-report.html)")
 
 	// Here you will define your flags and configuration settings.
 

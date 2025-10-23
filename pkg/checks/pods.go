@@ -1,28 +1,31 @@
 package checks
 
 import (
+	// standard packages
 	"context"
 	"fmt"
 	"time"
 	"errors"
 
+	// non-standard or custom packages
 	"github.com/fatih/color"
-	"github.com/briandowns/spinner"
 	"gitlab.com/kobot/kobot/pkg/logging"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-// RunPodCheck performs a health check for all pods across all namespaces.
+// RunPodCheck performs a health check for pods in one or more namespaces.
+// cli usage: kobot check cluster 
+// if you dont pass it any namespace (-n, --namespace <namespace>), it will check all namespaces 
 func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput bool) {
 
-	// set a empty context for the namespace search
+	// set a empty context for the namespace list operation
 	ctx := context.Background()
 
 	// holds the names of the namespaces that will be checked
 	var namespaces []string
 
-	// checks if the user passed in a namespace(s) and if fallsback to getting all namespaces from the api
+	// checks if the user passed in a namespace(s) and if not fallsback to getting all namespaces from the api
 	if namespace != "" {
 		namespaces = []string{namespace}
 	} else {
@@ -37,31 +40,25 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		}
 	}
 
-	// spinner animation so the user knows that something is happening when the check is starting
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-	s.Prefix = "\n Starting operator-initiated health check "
-	fmt.Print("")
-	s.Start()
-
+	logging.Title("Starting operator-initiated health check..\n")
+	fmt.Println("")
 	time.Sleep(5 * time.Second) // grace period for pods still starting
-	s.Stop()
-	fmt.Println("\n Starting operator-initiated health check:\n")
 
 	var totalNamespaces int
 	var totalPods int
 	var failedNamespaces int
-	failingMap := make(map[string]int) // ns -> count of bad pods
-	var results []NamespaceResult      // collect data for HTML output
+	failingMap := make(map[string]int) // ns -> keeps count of bad pods
+	var results []PodCheckResult      // collect data for HTML output
 
 	// looks through all the namespaces and reports if any have non running pods
 	for _, ns := range namespaces {
 
-		// context to timeout if the api calls hang
+		// context to timeout if the api calls hang (10s)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		totalNamespaces++
-		fmt.Printf("=== RUN   %s\n", ns)
+		fmt.Printf("=== SCAN   %s\n", ns)
 
 		pods, err := clientset.CoreV1().Pods(ns).List(ctx, v1.ListOptions{})
 		if err != nil {
@@ -85,7 +82,7 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 			}
 		}
 
-		results = append(results, NamespaceResult{
+		results = append(results, PodCheckResult{
 			Name:        ns,
 			PodsChecked: len(pods.Items),
 			PodsFailed:  len(nonRunning),
@@ -119,16 +116,15 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		fmt.Println()
 		logging.Warn("Operators should perform a deeper analysis of those namespaces to ensure critical applications are operational.\n")
 	} else {
-		logging.Success("All %d namespaces healthy\n", totalNamespaces)
+		logging.Success("%d namespace(s) was scanned and reported healthy. Additional verification may be needed for other resources if kobot didnt scan it.\n", totalNamespaces)
 	}
 
-	// html report
+	// checks if the user set --html (true) and builds a html report like robot test
 	if htmlOutput {
 		if err := WriteHTMLReport(results, totalPods, totalNamespaces, failedNamespaces); err != nil {
 			logging.Error("Failed to write HTML report: %v", err)
 		} else {
 			logging.Success("HTML report saved as kobot-report.html\n")
-			openReport()
 		}
 	}
 }

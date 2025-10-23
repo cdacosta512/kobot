@@ -3,12 +3,10 @@ package checks
 import (
 	"html/template"
 	"os"
-	"os/exec"
-	"runtime"
 )
 
 // WriteHTMLReport writes an HTML summary file of all namespace checks.
-func WriteHTMLReport(results []NamespaceResult, totalPods, totalNamespaces, failed int) error {
+func WriteHTMLReport(results []PodCheckResult, totalPods, totalNamespaces, failed int) error {
 	tmpl := `
 	<!DOCTYPE html>
 	<html>
@@ -55,7 +53,7 @@ func WriteHTMLReport(results []NamespaceResult, totalPods, totalNamespaces, fail
 	`
 
 	data := struct {
-		Results         []NamespaceResult
+		Results         []PodCheckResult
 		TotalPods       int
 		TotalNamespaces int
 		Failed          int
@@ -74,18 +72,4 @@ func WriteHTMLReport(results []NamespaceResult, totalPods, totalNamespaces, fail
 	defer f.Close()
 
 	return t.Execute(f, data)
-}
-
-func openReport() {
-	filename := "kobot-report.html"
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux":
-		cmd = exec.Command("open", filename)
-	case "windows":
-		cmd = exec.Command("cmd", "/c", "start", filename)
-	default:
-		cmd = exec.Command("xdg-open", filename)
-	}
-	_ = cmd.Start() // don't block execution if browser fails
 }

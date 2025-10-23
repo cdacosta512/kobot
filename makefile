@@ -1,10 +1,17 @@
-BINARY_NAME=kobot
+BINARY_NAME="kobot"
+VERSION=""
 
 build:
 	@go build -o $(BINARY_NAME) && echo "kobot binary successfully built"
 
 install:
-	@go install . && echo "kobot successfully install. Try running 'kobot version'"
+ifeq ($(VERSION), "")
+	@echo "WARN: No version was passed. Using default version v0.0.0"
+	@go install . && echo "kobot successfully installed." && kobot version
+else
+	@go install -ldflags="-X=gitlab.com/kobot/kobot/cmd.CliVersion=$(VERSION)" . && echo "kobot successfully installed." && kobot version
+endif
+
 
 # release:
 # 	GOOS=linux GOARCH=amd64 go build -o $(BINARY_NAME)-linux-amd64

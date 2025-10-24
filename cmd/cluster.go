@@ -7,7 +7,6 @@ import (
 	"gitlab.com/kobot/kobot/pkg/common"
 	"github.com/spf13/cobra"
 	"gitlab.com/kobot/kobot/pkg/checks"
-	"gitlab.com/kobot/kobot/pkg/logging"
 )
 
 var (
@@ -38,7 +37,6 @@ var clusterCmd = &cobra.Command{
 			return
 		}
 
-		logging.Info("Scanning pod health only.")
 		checks.RunPodCheck(clientset, namespace, htmlOutput)
 
 	},

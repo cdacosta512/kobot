@@ -40,7 +40,9 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		}
 	}
 
-	logging.Title("Starting operator-initiated health check..\n")
+	fmt.Println()
+	logging.Info("Scanning pod health only.")
+	logging.Starting("Operator-initiated HelmRelease readiness check")
 	fmt.Println("")
 	time.Sleep(5 * time.Second) // grace period for pods still starting
 
@@ -58,7 +60,7 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		defer cancel()
 
 		totalNamespaces++
-		fmt.Printf("Scanning namespace ===>   %s\n", ns)
+		logging.Info("Scanning namespace: %s", ns)
 
 		pods, err := clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
@@ -90,14 +92,14 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		})
 
 		if len(nonRunning) > 0 {
-			color.Red("--- FAIL: %s (%d pods not running)\n", ns, len(nonRunning))
+			color.Red("--- Fail: %s (%d pods not running)\n", ns, len(nonRunning))
 			for _, p := range nonRunning {
 				fmt.Printf("        Pod %s\n", p)
 			}
 			failedNamespaces++
 			failingMap[ns] = len(nonRunning)
 		} else {
-			color.Green("--- PASS: %s (%d pods running)\n", ns, len(pods.Items))
+			color.Green("--- Pass: %s (%d pods running)\n", ns, len(pods.Items))
 		}
 	}
 

@@ -9,3 +9,15 @@ Here are the core features and design goals at a glance:
 - Connects directly to your cluster using kubeconfig and the same context selection workflow as kubectl.  
 - Human-friendly summaries and machine-friendly outputs (JSON/YAML) for automation.  
 - Lightweight and fast — ideal for troubleshooting and release verification.
+
+
+
+
+
+
+
+- keycloak verification -- check the redirect
+- pods healthy
+- HR are ready
+- All apps on the correct versions
+- blackbox

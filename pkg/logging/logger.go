@@ -15,23 +15,33 @@ var (
 	bold         = color.New(color.Bold)
 )
 
+func Action(msg string, args ...interface{}) {
+	infoColor.Printf("RECOMMENDATION    ")
+	fmt.Printf(msg+"\n", args...)
+}
+
 func Info(msg string, args ...interface{}) {
-	infoColor.Printf("INFO  ")
+	infoColor.Printf("INFO        ")
+	fmt.Printf(msg+"\n", args...)
+}
+
+func Starting(msg string, args ...interface{}) {
+	successColor.Printf("STARTING    ")
 	fmt.Printf(msg+"\n", args...)
 }
 
 func Success(msg string, args ...interface{}) {
-	successColor.Printf("OK    ")
+	successColor.Printf("OK          ")
 	fmt.Printf(msg+"\n", args...)
 }
 
 func Warn(msg string, args ...interface{}) {
-	warnColor.Printf("WARN  ")
+	warnColor.Printf("WARN        ")
 	fmt.Printf(msg+"\n", args...)
 }
 
 func Error(msg string, args ...interface{}) {
-	errorColor.Printf("ERROR ")
+	errorColor.Printf("ERROR       ")
 	fmt.Printf(msg+"\n", args...)
 }
 

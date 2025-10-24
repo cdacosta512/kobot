@@ -3,20 +3,20 @@ package checks
 import (
 	// standard packages
 	"context"
+	"errors"
 	"fmt"
 	"time"
-	"errors"
 
 	// non-standard or custom packages
-	"github.com/fatih/color" // helps with the logging and nice colors
-	"gitlab.com/kobot/kobot/pkg/logging" // custom package I made so my logging could look a certain way
+	"github.com/fatih/color"                      // helps with the logging and nice colors
+	"gitlab.com/kobot/kobot/pkg/logging"          // custom package I made so my logging could look a certain way
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // gives us access to global types and options like GET and List options to get and list resources in the cluster
-	"k8s.io/client-go/kubernetes" // allows us to make a clientset to access different resources like corev1, appv1, batchv1 etc.
+	"k8s.io/client-go/kubernetes"                 // allows us to make a clientset to access different resources like corev1, appv1, batchv1 etc.
 )
 
 // RunPodCheck performs a health check for pods in one or more namespaces.
-// cli usage: kobot check cluster 
-// if you dont pass it any namespace (-n, --namespace <namespace>), it will check all namespaces 
+// cli usage: kobot check cluster
+// if you dont pass it any namespace (-n, --namespace <namespace>), it will check all namespaces
 func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput bool) {
 
 	// set a empty context for the namespace list operation
@@ -48,7 +48,7 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 	var totalPods int
 	var failedNamespaces int
 	failingMap := make(map[string]int) // ns -> keeps count of bad pods
-	var results []PodCheckResult      // collect data for HTML output
+	var results []PodCheckResult       // collect data for HTML output
 
 	// looks through all the namespaces and reports if any have non running pods
 	for _, ns := range namespaces {

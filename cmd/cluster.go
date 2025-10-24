@@ -7,25 +7,38 @@ import (
 	"gitlab.com/kobot/kobot/pkg/common"
 	"github.com/spf13/cobra"
 	"gitlab.com/kobot/kobot/pkg/checks"
+	"gitlab.com/kobot/kobot/pkg/logging"
 )
 
-// namespace to be used in the health check
-var namespace string
-
-// html report bool for the final results to be stored in a html file
-var htmlOutput bool
-
+var (
+	namespace string
+	htmlOutput bool
+	helmRelease bool
+)
 
 // clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Check overall cluster health across all namespaces",
 	Run: func(cmd *cobra.Command, args []string) {
+
+		// runs --helmrelease-only
+		if helmRelease {
+			dynamicClient := common.EnsureDynamicClusterConnection()
+			if dynamicClient == nil {
+				return
+			}
+			checks.RunHelmReleaseCheck(dynamicClient, namespace, htmlOutput)
+			return
+		}
+		
+		// defaults to runnig pod only checks
 		clientset := common.EnsureClusterConnection()
 		if clientset == nil {
 			return
 		}
 
+		logging.Info("Scanning pod health only.")
 		checks.RunPodCheck(clientset, namespace, htmlOutput)
 
 	},
@@ -35,6 +48,7 @@ func init() {
 	checkCmd.AddCommand(clusterCmd)
 	clusterCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace to check (default: all)")
 	clusterCmd.Flags().BoolVar(&htmlOutput, "html", false, "Generate an HTML report (kobot-report.html)")
+	clusterCmd.Flags().BoolVar(&helmRelease, "helmrelease-only", false, "Enables helm release checks for the cluster health check (default: false)")
 
 	// Here you will define your flags and configuration settings.
 

@@ -8,10 +8,10 @@ import (
 	"errors"
 
 	// non-standard or custom packages
-	"github.com/fatih/color"
-	"gitlab.com/kobot/kobot/pkg/logging"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"github.com/fatih/color" // helps with the logging and nice colors
+	"gitlab.com/kobot/kobot/pkg/logging" // custom package I made so my logging could look a certain way
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // gives us access to global types and options like GET and List options to get and list resources in the cluster
+	"k8s.io/client-go/kubernetes" // allows us to make a clientset to access different resources like corev1, appv1, batchv1 etc.
 )
 
 // RunPodCheck performs a health check for pods in one or more namespaces.
@@ -29,7 +29,7 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 	if namespace != "" {
 		namespaces = []string{namespace}
 	} else {
-		nsList, err := clientset.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
+		nsList, err := clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		logging.Warn("No namespace specified — checking all namespaces.\n")
 		if err != nil {
 			logging.Error("Unable to list namespaces: %v", err)
@@ -58,9 +58,9 @@ func RunPodCheck(clientset *kubernetes.Clientset, namespace string, htmlOutput b
 		defer cancel()
 
 		totalNamespaces++
-		fmt.Printf("=== SCAN   %s\n", ns)
+		fmt.Printf("Scanning namespace ===>   %s\n", ns)
 
-		pods, err := clientset.CoreV1().Pods(ns).List(ctx, v1.ListOptions{})
+		pods, err := clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
 				logging.Warn("Timeout list pods in %s -- API slow or busy", ns)

@@ -28,13 +28,7 @@ semantic_release:
     - npm ci
     - npx semantic-release
     - |
-      if [ -n "$SEMANTIC_RELEASE_NEXT_RELEASE_VERSION" ]; then
-        echo "NEXT_RELEASE_VERSION=v${SEMANTIC_RELEASE_NEXT_RELEASE_VERSION}" > .env
-      else
-        echo "NEXT_RELEASE_VERSION=UNSET" > .env
-      fi
-    - echo "Release version written to .env:"
-    - cat .env
+      echo "NEXT_RELEASE_VERSION=$(git tag --sort=-v:refname | head -n1)" > .env
   artifacts:
     reports:
       dotenv: .env

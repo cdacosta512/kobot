@@ -27,11 +27,20 @@ semantic_release:
   script:
     - npm ci
     - npx semantic-release
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
+    - |
+      if [ -n "$SEMANTIC_RELEASE_NEXT_RELEASE_VERSION" ]; then
+        echo "NEXT_RELEASE_VERSION=v${SEMANTIC_RELEASE_NEXT_RELEASE_VERSION}" > .env
+      else
+        echo "NEXT_RELEASE_VERSION=UNSET" > .env
+      fi
+    - echo "Release version written to .env:"
+    - cat .env
   artifacts:
     reports:
       dotenv: .env
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
 
 # -----------------------------
 # 2. Build multi-platform binaries
@@ -42,7 +51,17 @@ build_binaries:
   needs: ["semantic_release"]
   before_script:
     - apt-get update && apt-get install -y bash zip tar jq
-    - source .env
+    - |
+      if [ -f .env ]; then
+        source .env
+      fi
+
+      if [ "$NEXT_RELEASE_VERSION" = "UNSET" ] || [ -z "$NEXT_RELEASE_VERSION" ]; then
+        echo "WARN: release version not set, using last known tag"
+        NEXT_RELEASE_VERSION=$(git describe --tags --abbrev=0)
+      fi
+
+      echo "Using NEXT_RELEASE_VERSION=$NEXT_RELEASE_VERSION"
   script:
     - echo "Building Kobot version $NEXT_RELEASE_VERSION"
     - mkdir -p dist

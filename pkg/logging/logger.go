@@ -13,10 +13,22 @@ var (
 	warnColor    = color.New(color.FgYellow)
 	errorColor   = color.New(color.FgRed)
 	bold         = color.New(color.Bold)
+	// runningColor = color.New(color.FgGreen)
+	// kobot		 = color.New(color.FgHiBlack)
 )
+
+func Kobot(format string, a ...interface{}) string {
+    tag := color.New(color.FgHiBlack).Sprint("SCAN INFO:")
+    return fmt.Sprintf("       | %s %s", tag, fmt.Sprintf(format, a...))
+}
 
 func Action(msg string, args ...interface{}) {
 	infoColor.Printf("RECOMMENDATION    ")
+	fmt.Printf(msg+"\n", args...)
+}
+
+func Running(msg string, args ...interface{}) {
+	bold.Printf("RUNNING    ")
 	fmt.Printf(msg+"\n", args...)
 }
 

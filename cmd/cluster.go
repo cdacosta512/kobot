@@ -10,51 +10,59 @@ import (
 )
 
 var (
-	namespace string
-	htmlOutput bool
-	helmRelease bool
+	namespace       []string
+	htmlOutput      bool
+	helmRelease     bool
+	fluxGracePeriod int
+	podDeepCheck bool
 )
 
-// clusterCmd represents the cluster command
 var clusterCmd = &cobra.Command{
 	Use:   "cluster",
 	Short: "Check overall cluster health across all namespaces",
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// runs --helmrelease-only
+		// if the user want to run helmrelease checks
 		if helmRelease {
 			dynamicClient := common.EnsureDynamicClusterConnection()
 			if dynamicClient == nil {
 				return
 			}
-			checks.RunHelmReleaseCheck(dynamicClient, namespace, htmlOutput)
+			checks.RunHelmReleaseCheck(dynamicClient, namespace, htmlOutput, fluxGracePeriod)
 			return
 		}
-		
-		// defaults to runnig pod only checks
+
+		// if the user wants to run a deep pod health check
+		if podDeepCheck {
+			clientset := common.EnsureClusterConnection()
+			if clientset == nil {
+				return
+			}
+			checks.RunPodDeepCheck(clientset, namespace, htmlOutput)
+			return
+		}
+
+		// default behavior of running a low level pod health check
 		clientset := common.EnsureClusterConnection()
 		if clientset == nil {
 			return
 		}
 
 		checks.RunPodCheck(clientset, namespace, htmlOutput)
-
 	},
 }
 
 func init() {
 	checkCmd.AddCommand(clusterCmd)
-	clusterCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace to check (default: all)")
+	clusterCmd.Flags().StringSliceVarP(
+		&namespace,
+		"namespace",
+		"n",
+		[]string{},
+		"Comma-separated list of namespaces to check (default: all)",
+	)
 	clusterCmd.Flags().BoolVar(&htmlOutput, "html", false, "Generate an HTML report (kobot-report.html)")
-	clusterCmd.Flags().BoolVar(&helmRelease, "helmrelease-only", false, "Enables helm release checks for the cluster health check (default: false)")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// clusterCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// clusterCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	clusterCmd.Flags().BoolVar(&helmRelease, "helmrelease-only", false, "Run only HelmRelease checks")
+	clusterCmd.Flags().IntVar(&fluxGracePeriod, "flux-grace", 5, "Time (in seconds) to wait for Flux-managed resources to become Ready (default: 5s)")
+	clusterCmd.Flags().BoolVar(&podDeepCheck, "deep", false, "Performs a deeper pod health analysis when running the check cluster command")
 }

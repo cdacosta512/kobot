@@ -1,50 +1,38 @@
 package checks
 
 import (
-	// standard packages
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	// non-standard or custom packages
-	"github.com/fatih/color"             // helps with the logging and nice colors
-	"gitlab.com/kobot/kobot/pkg/logging" // custom package I made so my logging could look a certain way
-	// TODO -- add the package breakdowns into a doc so we can clean up this file and remove all these comments.
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"       // gives us access to global types and options like GET and List options to get and list resources in the cluster
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured" // allows the dynamic client to read and modify nested fields since that is unknown with CRDs -- not needed when working with standard k8s objects
-	"k8s.io/apimachinery/pkg/runtime/schema"            // --- this allows us to define the GVR for the custom resource we want to work with like the helmrelease resource
-	"k8s.io/client-go/dynamic"                          // --- this allows us to create a non-standard kubernetes clientset to work with CRDs like helmreleases
+	"github.com/fatih/color"
+	"gitlab.com/kobot/kobot/pkg/logging"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 )
 
-// RunHelmReleaseCheck performs a health check on all helmreleases in one or more namespaces.
-// For internal use right now, it will only check the bigbang namespace but we will make it flexible for users who dont need it hardcoded to the bigbang namesapce.
-func RunHelmReleaseCheck(dynamicClient dynamic.Interface, namespace string, htmlOutput bool) {
-
-	// ctx := context.Background()
-	var namespaces []string
-
-	// Get all namespaces if user didn't pass one
-	if namespace != "" {
-		namespaces = []string{namespace}
-	} else {
-		// Dynamic client doesn’t handle namespaces directly, so use corev1 API logic elsewhere
-		// For now, we’ll assume helmreleases exist in bigbang or provided NS
+// RunHelmReleaseCheck performs a health check on all HelmReleases
+// within a namespace or a default one (bigbang) if none is specified.
+func RunHelmReleaseCheck(dynamicClient dynamic.Interface, namespaces []string, htmlOutput bool, fluxGracePeriod int) {
+	// If user didn’t specify any namespaces, use "bigbang" by default
+	if len(namespaces) == 0 || (len(namespaces) == 1 && namespaces[0] == "") {
 		namespaces = []string{"bigbang"}
-		// fmt.Println()
-		logging.Warn("No namespace specified — defaulting to bigbang.")
+		fmt.Println()
+		logging.Warn("No namespaces specified — defaulting to 'bigbang'.")
 	}
 
-	fmt.Println()
 	logging.Info("Scanning only HelmRelease resources.")
-	logging.Starting("Operator-initiated HelmRelease readiness check")
-	time.Sleep(5 * time.Second)
 
-	var totalNamespaces int
-	var totalSuspended int
-	var totalHelmReleases int
-	var failedNamespaces int
-	failingMap := make(map[string]int)
+	if fluxGracePeriod != 5 {
+		logging.Info("Flux wait grace period set to %ds.", fluxGracePeriod)
+	} else {
+		logging.Info("No Flux wait grace period specified — using default of 5 seconds.")
+	}
+
+	logging.Starting("Operator-initiated HelmRelease readiness check")
+	time.Sleep(2 * time.Second)
 
 	helmReleaseGVR := schema.GroupVersionResource{
 		Group:    "helm.toolkit.fluxcd.io",
@@ -52,101 +40,86 @@ func RunHelmReleaseCheck(dynamicClient dynamic.Interface, namespace string, html
 		Resource: "helmreleases",
 	}
 
+	var results []struct {
+		Name   string
+		Ready  bool
+		Reason string
+	}
+
+	var totalHelmReleases, totalSuspended, failed int
+
+	// --- Loop over all provided namespaces
 	for _, ns := range namespaces {
-		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		totalNamespaces++
 		logging.Info("Scanning namespace: %s", ns)
-		fmt.Println("")
 
 		releases, err := dynamicClient.Resource(helmReleaseGVR).Namespace(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				logging.Warn("Timeout listing HelmReleases in %s -- API slow or busy", ns)
-			} else {
-				logging.Error("Error occurred listing HelmReleases in %s: %v", ns, err)
-			}
-			color.Red("--- FAIL: %s (error listing HelmReleases)\n", ns)
-			failedNamespaces++
+			logging.Error("Unable to list HelmReleases in %s: %v", ns, err)
 			continue
 		}
 
-		totalHelmReleases += len(releases.Items)
-		var nonReady []string
-		var suspendedCount int
-
-		if totalHelmReleases == 0 {
-			fmt.Printf("No HelmReleases found in %s namespace.\n", ns)
-			fmt.Println("")
-
-			elapsed := time.Since(start)
-			logging.Info("Attempted scan completed in %s\n",  elapsed.Round(time.Millisecond))
-			return
-		}
-
 		for _, hr := range releases.Items {
+			totalHelmReleases++
 			name := hr.GetName()
-			ready, reason := isHelmReleaseReady(hr)
-			switch reason {
-			case "HelmRelease is suspended":
-				color.Yellow("    WARN: %s (Suspended)", name)
-				suspendedCount++
+
+			ready, reason := checkHelmReleaseWithGrace(hr, fluxGracePeriod)
+			results = append(results, struct {
+				Name   string
+				Ready  bool
+				Reason string
+			}{Name: name, Ready: ready, Reason: reason})
+
+			switch {
+			case reason == "HelmRelease is suspended":
 				totalSuspended++
-			default:
-				if ready {
-					color.Green("    PASS: %s", name)
-				} else {
-					color.Red("    FAIL: %s (Reason: %s)", name, reason)
-					nonReady = append(nonReady, fmt.Sprintf("%s (Reason: %s)", name, reason))
-				}
+			case !ready:
+				failed++
 			}
 		}
+	}
 
-		if len(nonReady) > 0 {
-			fmt.Println("")
-			elapsed := time.Since(start)
-			logging.Error("Scan completed but with failures in %s", elapsed.Round(time.Millisecond))
-			failedNamespaces++
-			failingMap[ns] = len(nonReady)
-		} else {
-			fmt.Println("")
-			elapsed := time.Since(start)
-			logging.Info("Scan completed in %s", elapsed.Round(time.Millisecond))
+	logging.Info("Scan complete. Generating kobot health report.\n")
+	time.Sleep(3 * time.Second)
+
+	fmt.Println("=====================================================")
+	logging.Title("    Kobot HelmRelease Readiness Report\n")
+	fmt.Println("=====================================================\n")
+
+	fmt.Printf("Total HelmReleases checked: %d\n", totalHelmReleases)
+	fmt.Printf("Total Suspended HelmReleases: %d\n\n", totalSuspended)
+
+	for _, r := range results {
+		switch {
+		case r.Reason == "HelmRelease is suspended":
+			color.Yellow("WARN: %s (Suspended)", r.Name)
+		case r.Ready:
+			color.Green("PASS: %s", r.Name)
+		default:
+			color.Red("FAIL: %s (Reason: %s)", r.Name, r.Reason)
+			fmt.Print(logging.Kobot("HelmRelease remained unhealthy after waiting %ds to transition into Ready\n", fluxGracePeriod))
 		}
 	}
 
 	fmt.Println()
-	logging.Title("Kobot HelmRelease Readiness Report\n")
-	fmt.Printf("Namespaces checked: %d\n", totalNamespaces)
-	fmt.Printf("Total HelmReleases checked: %d\n", totalHelmReleases)
-	fmt.Printf("Total Suspended HelmReleases: %d\n", totalSuspended)
-	fmt.Println("")
-
-	if failedNamespaces > 0 {
-		fmt.Println("Failing namespaces:")
-		for ns, count := range failingMap {
-			fmt.Printf("  - %s (%d HelmRelease(s) not Ready)\n", ns, count)
-		}
-		fmt.Println()
-		logging.Action("Operators should review the listed HelmReleases to resolve deployment issues or Helm upgrade failures.\n")
-	} else if totalSuspended > 0{
-		logging.Warn("Kobot scanned %d namespace(s) and found %d HelmRelease(s) are Ready but %d HelmRelease(s) were suspended.", totalNamespaces, totalHelmReleases-totalSuspended, totalSuspended)
-		logging.Action("Try running 'flux resume hr <helmReleaseName> -n <namespace>' and then re-running the kobot health check.\n")
+	if failed > 0 {
+		logging.Error("Scan completed with %d failing HelmReleases.", failed)
+		logging.Action("Operators should review failed HelmReleases and rerun kobot once reconciled.\n")
+	} else if totalSuspended > 0 {
+		logging.Warn("No failing HelmReleases were detected; however, one or more HelmReleases are currently suspended. An operator should investigate the reason for the suspension.\n")
 	} else {
-		logging.Success("Kobot scanned %d namespace(s) and found all HelmRelease(s) are Ready.\n", totalNamespaces)
+		logging.Success("All HelmReleases are in a Ready state. This reflects only the readiness condition of the HelmReleases themselves and does not confirm that the deployed services or pods are functioning correctly. To perform a full cluster health check, use the 'kobot check cluster' command.\n")
 	}
 }
 
 // isHelmReleaseReady checks the HelmRelease .status.conditions for Ready=True
 // and also ensures the resource is not suspended (.spec.suspend != true).
 func isHelmReleaseReady(obj unstructured.Unstructured) (bool, string) {
-	// Check if the release is suspended
 	suspended, found, err := unstructured.NestedBool(obj.Object, "spec", "suspend")
 	if err == nil && found && suspended {
 		return false, "HelmRelease is suspended"
-
 	}
 
 	conditions, found, err := unstructured.NestedSlice(obj.Object, "status", "conditions")
@@ -161,12 +134,25 @@ func isHelmReleaseReady(obj unstructured.Unstructured) (bool, string) {
 			r, _, _ := unstructured.NestedString(cond, "reason")
 
 			if t == "Ready" {
-				if s == "True" {
-					return true, r
-				}
-				return false, r
+				return s == "True", r
 			}
 		}
 	}
 	return false, "Ready condition missing"
+}
+
+func checkHelmReleaseWithGrace(obj unstructured.Unstructured, fluxGracePeriod int) (bool, string) {
+	ready, reason := isHelmReleaseReady(obj)
+	if ready {
+		return true, reason
+	}
+
+	time.Sleep(time.Duration(fluxGracePeriod) * time.Second)
+
+	ready, reason = isHelmReleaseReady(obj)
+	if ready {
+		return true, reason
+	}
+
+	return false, reason
 }

@@ -21,3 +21,8 @@ Here are the core features and design goals at a glance:
 - HR are ready
 - All apps on the correct versions
 - blackbox
+
+## License
+Kobot is licensed under the [Apache License 2.0](LICENSE).
+
+You may freely use, modify, and distribute this software under the terms of the license.

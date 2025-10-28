@@ -13,11 +13,14 @@ stages:
   - build
   - publish
 
+# -----------------------------
+# 1. Secret detection
+# -----------------------------
 secret_detection:
   stage: secret-detection
 
 # -----------------------------
-# 1. Semantic-release versioning
+# 2. Semantic-release versioning
 # -----------------------------
 semantic_release:
   image: node:24
@@ -29,32 +32,33 @@ semantic_release:
     - npx semantic-release
     - |
       echo "NEXT_RELEASE_VERSION=$(git tag --sort=-v:refname | head -n1)" > .env
+      echo "NEXT_RELEASE_VERSION written to .env"
   artifacts:
     reports:
       dotenv: .env
+    paths:
+      - .env
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
-
 # -----------------------------
-# 2. Build multi-platform binaries
+# 3. Build multi-platform binaries
 # -----------------------------
 build_binaries:
   image: golang:1.25
   stage: build
-  needs: ["semantic_release"]
+  needs:
+    - job: semantic_release
+      artifacts: true
   before_script:
     - apt-get update && apt-get install -y bash zip tar jq
     - |
       if [ -f .env ]; then
         source .env
-      fi
-
-      if [ "$NEXT_RELEASE_VERSION" = "UNSET" ] || [ -z "$NEXT_RELEASE_VERSION" ]; then
-        echo "WARN: release version not set, using last known tag"
+      else
+        echo "WARN: .env not found. Using last known tag."
         NEXT_RELEASE_VERSION=$(git describe --tags --abbrev=0)
       fi
-
       echo "Using NEXT_RELEASE_VERSION=$NEXT_RELEASE_VERSION"
   script:
     - echo "Building Kobot version $NEXT_RELEASE_VERSION"
@@ -63,30 +67,44 @@ build_binaries:
     - GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-linux-arm64
     - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
     - GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
+
+    # Compress binaries
     - cd dist
     - zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
     - tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-amd64
     - tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-arm64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-arm64
     - tar -czf kobot-${NEXT_RELEASE_VERSION}-darwin-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
     - rm kobot-${NEXT_RELEASE_VERSION}-linux-* kobot-${NEXT_RELEASE_VERSION}-darwin-* kobot-${NEXT_RELEASE_VERSION}-windows-*.exe
+
+    # Generate checksums
     - sha256sum * > checksums-${NEXT_RELEASE_VERSION}.txt
+    - cat checksums-${NEXT_RELEASE_VERSION}.txt
   artifacts:
     paths:
       - dist/
+      - .env
     expire_in: 1 week
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
 
 # -----------------------------
-# 3. Publish release assets to GitLab.com
+# 4. Publish release assets to GitLab.com
 # -----------------------------
 publish_release:
   image: alpine:3.20
   stage: publish
-  needs: ["build_binaries"]
+  needs:
+    - job: build_binaries
+      artifacts: true
   before_script:
     - apk add --no-cache curl bash jq
-    - source .env
+    - |
+      if [ -f .env ]; then
+        source .env
+      else
+        echo "ERROR: .env not found. Cannot publish."
+        exit 1
+      fi
   script:
     - |
       set -euo pipefail
@@ -104,6 +122,7 @@ publish_release:
              --data "url=${CI_PROJECT_URL}${URL}" \
              "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/releases/${NEXT_RELEASE_VERSION}/assets/links"
       done
-      echo "✅ All binaries uploaded and linked to release $NEXT_RELEASE_VERSION"
+
+      echo "All binaries uploaded and linked to release $NEXT_RELEASE_VERSION"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'

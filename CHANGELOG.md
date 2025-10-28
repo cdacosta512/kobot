@@ -1,3 +1,10 @@
+# [0.3.0](https://gitlab.com/kobot3/kobot/compare/v0.2.0...v0.3.0) (2025-10-28)
+
+
+### Features
+
+* Adding v0.3.0 ([6ef4ff8](https://gitlab.com/kobot3/kobot/commit/6ef4ff860446ece5f5a226303499a420860d3be5))
+
 # [0.2.0](https://gitlab.com/kobot3/kobot/compare/v0.1.0...v0.2.0) (2025-10-28)
 
 

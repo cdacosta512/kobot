@@ -1,3 +1,10 @@
+# [0.3.0](https://gitlab.com/kobot3/kobot/compare/v0.2.0...v0.3.0) (2025-10-28)
+
+
+### Features
+
+* Updated next release code ([5047d7f](https://gitlab.com/kobot3/kobot/commit/5047d7fd66b4018f3b3e37db255443a26282e0e3))
+
 # [0.2.0](https://gitlab.com/kobot3/kobot/compare/v0.1.0...v0.2.0) (2025-10-28)
 
 

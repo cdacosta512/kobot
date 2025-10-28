@@ -1,0 +1,29 @@
+{
+  "name": "kobot",
+  "version": "1.0.0",
+  "description": "![alt text](assests/kobot_nb_black.png) # Kobot - Kubernetes Cluster Health Analyzer Kobot is a Go-native, read-only CLI that analyzes Kubernetes cluster health and gives operators and release engineers a concise, high-level overview of the cluster and its resources.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/kobot3/kobot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/kobot3/kobot/issues"
+  },
+  "homepage": "https://gitlab.com/kobot3/kobot#readme",
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/gitlab": "^13.2.9",
+    "@semantic-release/release-notes-generator": "^14.1.0",
+    "conventional-changelog-conventionalcommits": "^9.1.0",
+    "semantic-release": "^25.0.1"
+  }
+}

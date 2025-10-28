@@ -1,16 +1,28 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
+# --- Default job that came with the Gitlab project when it was first created.
+include:
+- template: Security/Secret-Detection.gitlab-ci.yml
+
 stages:
 - test
 - secret-detection
+- release
+
+# Handles versioning with semantic release for auto versioning and releases.
+semantic_release:
+  image: node:24
+  stage: release
+  script:
+    - npm ci
+    - npx semantic-release
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  artifacts:
+    reports:
+      dotenv: .env
+
+
 variables:
   SECRET_DETECTION_ENABLED: 'true'
 secret_detection:
   stage: secret-detection
-include:
-- template: Security/Secret-Detection.gitlab-ci.yml
+

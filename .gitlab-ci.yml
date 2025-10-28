@@ -41,39 +41,22 @@ build_binaries:
   stage: build
   needs: ["semantic_release"]
   before_script:
-    - apk add --no-cache bash zip tar jq
+    - apt-get update && apt-get install -y bash zip tar jq
+    - source .env
   script:
-    - |
-      set -euo pipefail
-      if [ ! -f .env ]; then
-        echo "ERROR: .env not found. Did semantic_release run?"
-        exit 1
-      fi
-      source .env
-      echo "Building Kobot version $NEXT_RELEASE_VERSION"
-
-      mkdir -p dist
-
-      # Build binaries for each platform
-      GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-linux-amd64
-      GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-linux-arm64
-      GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
-      GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
-
-      cd dist
-
-      # Compress archives
-      zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
-      tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-amd64
-      tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-arm64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-arm64
-      tar -czf kobot-${NEXT_RELEASE_VERSION}-darwin-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
-
-      # Remove raw binaries
-      rm kobot-${NEXT_RELEASE_VERSION}-linux-* kobot-${NEXT_RELEASE_VERSION}-darwin-* kobot-${NEXT_RELEASE_VERSION}-windows-*.exe
-
-      # Generate checksums
-      sha256sum * > checksums-${NEXT_RELEASE_VERSION}.txt
-      cat checksums-${NEXT_RELEASE_VERSION}.txt
+    - echo "Building Kobot version $NEXT_RELEASE_VERSION"
+    - mkdir -p dist
+    - GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-linux-amd64
+    - GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-linux-arm64
+    - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
+    - GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w -X=gitlab.com/kobot/kobot/cmd.CliVersion=${NEXT_RELEASE_VERSION}" -o dist/kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
+    - cd dist
+    - zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.zip kobot-${NEXT_RELEASE_VERSION}-windows-amd64.exe
+    - tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-amd64
+    - tar -czf kobot-${NEXT_RELEASE_VERSION}-linux-arm64.tar.gz kobot-${NEXT_RELEASE_VERSION}-linux-arm64
+    - tar -czf kobot-${NEXT_RELEASE_VERSION}-darwin-amd64.tar.gz kobot-${NEXT_RELEASE_VERSION}-darwin-amd64
+    - rm kobot-${NEXT_RELEASE_VERSION}-linux-* kobot-${NEXT_RELEASE_VERSION}-darwin-* kobot-${NEXT_RELEASE_VERSION}-windows-*.exe
+    - sha256sum * > checksums-${NEXT_RELEASE_VERSION}.txt
   artifacts:
     paths:
       - dist/

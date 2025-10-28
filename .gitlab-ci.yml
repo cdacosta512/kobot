@@ -81,20 +81,16 @@ build_binaries:
 # 3. Publish release assets to GitLab.com
 # -----------------------------
 publish_release:
-  image: curlimages/curl:8.5.0
+  image: alpine:3.20
   stage: publish
   needs: ["build_binaries"]
   before_script:
-    - apk add --no-cache bash jq
+    - apk add --no-cache curl bash jq
+    - source .env
   script:
     - |
       set -euo pipefail
-      if [ ! -f .env ]; then
-        echo "ERROR: .env not found. Did semantic_release run?"
-        exit 1
-      fi
-      source .env
-      echo "Attaching binaries for $NEXT_RELEASE_VERSION to GitLab.com release"
+      echo "Attaching binaries for $NEXT_RELEASE_VERSION to GitLab release..."
 
       for file in dist/*; do
         echo "Uploading $file..."
@@ -108,5 +104,6 @@ publish_release:
              --data "url=${CI_PROJECT_URL}${URL}" \
              "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/releases/${NEXT_RELEASE_VERSION}/assets/links"
       done
+      echo "✅ All binaries uploaded and linked to release $NEXT_RELEASE_VERSION"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'

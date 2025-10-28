@@ -1,3 +1,10 @@
+# [0.4.0](https://gitlab.com/kobot3/kobot/compare/v0.3.0...v0.4.0) (2025-10-28)
+
+
+### Features
+
+* Add v4 ([2e8541d](https://gitlab.com/kobot3/kobot/commit/2e8541d0f45858346a946e805ea1c5096352a8d8))
+
 # [0.3.0](https://gitlab.com/kobot3/kobot/compare/v0.2.0...v0.3.0) (2025-10-28)
 
 

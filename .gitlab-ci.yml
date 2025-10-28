@@ -112,12 +112,12 @@ publish_release:
 
       for file in dist/*; do
         echo "Uploading $file..."
-        UPLOAD_RESPONSE=$(curl --silent --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        UPLOAD_RESPONSE=$(curl --silent --header "PRIVATE-TOKEN: $GL_TOKEN" \
                                --upload-file "$file" \
                                "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/uploads")
         URL=$(echo "$UPLOAD_RESPONSE" | jq -r ".url")
         NAME=$(basename "$file")
-        curl --silent --header "PRIVATE-TOKEN: $CI_JOB_TOKEN" \
+        curl --silent --header "PRIVATE-TOKEN: $GL_TOKEN" \
              --data "name=$NAME" \
              --data "url=${CI_PROJECT_URL}${URL}" \
              "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/releases/${NEXT_RELEASE_VERSION}/assets/links"

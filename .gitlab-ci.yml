@@ -4,6 +4,7 @@ include:
 
 variables:
   SECRET_DETECTION_ENABLED: 'true'
+  GIT_DEPTH: "0"
 
 stages:
   - test
